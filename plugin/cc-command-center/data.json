@@ -1,0 +1,57 @@
+{
+  "actions": [
+    {
+      "id": "wechat-article",
+      "label": "公众号改写",
+      "icon": "newspaper",
+      "kind": "output",
+      "description": "把当前笔记改写成一篇完整公众号文章。",
+      "script": ".cc-command-center/scripts/note-action.sh"
+    },
+    {
+      "id": "xiaohongshu-cards",
+      "label": "小红书拆条",
+      "icon": "image",
+      "kind": "output",
+      "description": "拆出 5 条短内容，并附可复制的信息图生图提示词。",
+      "script": ".cc-command-center/scripts/note-action.sh"
+    },
+    {
+      "id": "topic-bank",
+      "label": "提炼选题",
+      "icon": "lightbulb",
+      "kind": "output",
+      "description": "提炼选题、标题和可发布角度。",
+      "script": ".cc-command-center/scripts/note-action.sh"
+    },
+    {
+      "id": "summary-map",
+      "label": "摘要路标",
+      "icon": "map",
+      "kind": "output",
+      "description": "生成摘要、关键词、双链建议和后续动作。",
+      "script": ".cc-command-center/scripts/note-action.sh"
+    },
+    {
+      "id": "polish-in-place",
+      "label": "备份后润色原文",
+      "icon": "wand-sparkles",
+      "kind": "modify",
+      "description": "先备份当前笔记，再让 Claude Code 直接润色原文件。",
+      "script": ".cc-command-center/scripts/note-action.sh"
+    },
+    {
+      "id": "obsidian-format",
+      "label": "补标签双链",
+      "icon": "tags",
+      "kind": "modify",
+      "description": "先备份当前笔记，再补 Obsidian 标签、摘要和双链。",
+      "script": ".cc-command-center/scripts/note-action.sh"
+    }
+  ],
+  "terminalTips": [
+    "安装 Obsidian Terminal 插件后，把终端固定到底部。",
+    "在终端里进入 vault 根目录，然后运行 claude。",
+    "本插件负责一键动作；Terminal 负责连续对话和人工接管。"
+  ]
+}

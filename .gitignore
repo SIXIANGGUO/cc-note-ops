@@ -1,0 +1,9 @@
+.DS_Store
+*.log
+*.zip
+dist/
+node_modules/
+/.obsidian/
+/.cc-command-center/
+/控制中心/运行结果/
+/控制中心/备份/
