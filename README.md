@@ -23,11 +23,11 @@ CC Note Ops 不是一个只好看的仪表盘。它会识别你当前打开的 M
 
 ## 预览
 
-当前版本主打可用性，既支持暗色操作台，也能跟随 Obsidian 亮色主题：
+当前版本主打可用性，既支持主题切换，也把常用内容动作集中到一个工作台里：
 
-![Obsidian 亮色主题下的工作台](docs/assets/screenshots/obsidian-workbench-light.png)
+![CC Note Ops 主工作台](docs/assets/screenshots/workbench-main-functions.png)
 
-![Terminal 插件配合说明](docs/assets/screenshots/terminal-bridge-light.png)
+![一键操作和 Claude Code 接管入口](docs/assets/screenshots/workbench-actions-bridge.png)
 
 - 顶部显示当前连接状态。
 - 中部显示源笔记信息和跟随滚动的内容预览。
