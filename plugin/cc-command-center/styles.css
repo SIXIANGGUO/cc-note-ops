@@ -13,6 +13,12 @@
   --cc-preview-bg: #09090a;
   --cc-soft-bg: rgba(255, 255, 255, 0.025);
   --cc-soft-border: rgba(255, 255, 255, 0.08);
+  --cc-action-bg: linear-gradient(180deg, rgba(238, 116, 77, 0.08), rgba(255, 255, 255, 0.015)), var(--cc-panel);
+  --cc-action-hover-bg: linear-gradient(180deg, rgba(238, 116, 77, 0.12), rgba(255, 255, 255, 0.025)), var(--cc-panel);
+  --cc-copy-bg: rgba(117, 216, 136, 0.055);
+  --cc-copy-hover-bg: rgba(117, 216, 136, 0.09);
+  --cc-copy-border: rgba(117, 216, 136, 0.24);
+  --cc-copy-border-strong: rgba(117, 216, 136, 0.52);
   --cc-code-text: #ded6d0;
   --cc-body-text: #d6cec8;
   --cc-button-bg: #303033;
@@ -46,6 +52,12 @@
   --cc-preview-bg: #ffffff;
   --cc-soft-bg: rgba(31, 35, 40, 0.035);
   --cc-soft-border: rgba(31, 35, 40, 0.1);
+  --cc-action-bg: linear-gradient(180deg, rgba(201, 87, 54, 0.055), rgba(255, 255, 255, 0.72)), var(--cc-panel);
+  --cc-action-hover-bg: linear-gradient(180deg, rgba(201, 87, 54, 0.095), rgba(255, 255, 255, 0.86)), var(--cc-panel);
+  --cc-copy-bg: rgba(31, 143, 102, 0.055);
+  --cc-copy-hover-bg: rgba(31, 143, 102, 0.09);
+  --cc-copy-border: rgba(31, 143, 102, 0.22);
+  --cc-copy-border-strong: rgba(31, 143, 102, 0.46);
   --cc-code-text: #2f3338;
   --cc-body-text: #3d444d;
   --cc-button-bg: #f0f1f3;
@@ -67,6 +79,12 @@
   --cc-preview-bg: #ffffff;
   --cc-soft-bg: rgba(15, 159, 110, 0.055);
   --cc-soft-border: rgba(32, 139, 111, 0.16);
+  --cc-action-bg: linear-gradient(180deg, rgba(32, 127, 112, 0.065), rgba(255, 255, 255, 0.74)), var(--cc-panel);
+  --cc-action-hover-bg: linear-gradient(180deg, rgba(32, 127, 112, 0.11), rgba(255, 255, 255, 0.88)), var(--cc-panel);
+  --cc-copy-bg: rgba(15, 159, 110, 0.07);
+  --cc-copy-hover-bg: rgba(15, 159, 110, 0.11);
+  --cc-copy-border: rgba(32, 139, 111, 0.22);
+  --cc-copy-border-strong: rgba(32, 139, 111, 0.5);
   --cc-code-text: #25312d;
   --cc-body-text: #3e514b;
   --cc-button-bg: #e5f3ee;
@@ -319,16 +337,16 @@
   min-width: 0;
   min-height: 78px;
   padding: 12px;
-  border: 1px solid rgba(117, 216, 136, 0.24);
+  border: 1px solid var(--cc-copy-border);
   appearance: none;
-  background: rgba(117, 216, 136, 0.055);
+  background: var(--cc-copy-bg);
   color: var(--cc-text);
   text-align: left;
 }
 
 .cc-copy-card:hover:not(:disabled) {
-  border-color: rgba(117, 216, 136, 0.52);
-  background: rgba(117, 216, 136, 0.09);
+  border-color: var(--cc-copy-border-strong);
+  background: var(--cc-copy-hover-bg);
 }
 
 .cc-copy-card:disabled {
@@ -508,7 +526,7 @@
   border: 1px solid var(--cc-line);
   appearance: none;
   border-radius: 4px;
-  background: linear-gradient(180deg, rgba(238, 116, 77, 0.08), rgba(255, 255, 255, 0.015)), #171719;
+  background: var(--cc-action-bg);
   color: var(--cc-text);
   text-align: left;
   white-space: normal;
@@ -520,6 +538,7 @@
 
 .cc-action-card:hover:not(:disabled) {
   border-color: var(--cc-line-strong);
+  background: var(--cc-action-hover-bg);
   transform: translateY(-1px);
 }
 
