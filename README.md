@@ -27,6 +27,10 @@ CC Note Ops 不是一个只好看的仪表盘。它会识别你当前打开的 M
 
 ![CC Note Ops 主工作台](docs/assets/screenshots/workbench-main-functions.png)
 
+主题可以在工作台内直接切换：
+
+![主题切换演示](docs/assets/screenshots/theme-switching.gif)
+
 ![一键操作和 Claude Code 接管入口](docs/assets/screenshots/workbench-actions-bridge.png)
 
 - 顶部显示当前连接状态。
