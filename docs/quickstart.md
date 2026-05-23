@@ -65,7 +65,7 @@ claude
 点击 `提炼选题`，确认生成：
 
 ```text
-控制中心/运行结果/当前笔记/你的笔记名-选题池.md
+控制中心/运行结果/当前笔记/提炼选题-结构化-时间戳-你的笔记名.md
 ```
 
 再点击 `小红书拆条`，确认生成结果里包含：
@@ -102,13 +102,54 @@ $HOME/.local/bin/claude
 .cc-command-center/scripts/note-action.sh
 ```
 
+### 按钮调用没有走代理
+
+Obsidian 不一定继承系统终端里的代理环境。
+
+需要显式代理时，复制示例文件：
+
+```bash
+cp .cc-command-center/proxy.env.example .cc-command-center/proxy.env
+```
+
+然后按你的本机代理端口修改：
+
+```bash
+HTTP_PROXY=http://127.0.0.1:7890
+HTTPS_PROXY=http://127.0.0.1:7890
+ALL_PROXY=socks5://127.0.0.1:7890
+NO_PROXY=localhost,127.0.0.1
+```
+
+这只负责给后台 `claude` 命令注入标准 proxy 环境变量，不承诺账号安全，也不替代你对服务规则的判断。
+
 ### 点击输出后操作台变成结果页怎么办
 
 这是正常现象。插件会继续锁定原来的源笔记，后续按钮仍然针对源笔记运行。
 
-### 左侧 Claude Code 没反应
+### 文风模板为什么没有影响所有按钮
 
-按钮任务不会复用左侧或底部 Terminal 里的 Claude Code 会话。它会后台启动独立进程。
+只有表达型任务会读取文风模板，例如 `公众号改写`、`小红书拆条`、`备份后润色原文`。
+
+`提炼选题`、`摘要路标`、`补标签双链` 是结构化任务，它们更关注整理和归档，不会跟文风联动。
+
+### 按钮提示词在哪里改
+
+安装后打开 vault 里的隐藏目录：
+
+```text
+.cc-command-center/actions/
+```
+
+每个按钮对应一个 Markdown 文件，直接改这里即可。文风模板在：
+
+```text
+.cc-command-center/profiles/
+```
+
+### Terminal 里的 Claude Code 没反应
+
+按钮任务不会复用 Terminal 里的 Claude Code 会话。它会后台启动独立进程。
 
 如果想让 Terminal 里的 Claude Code 接管，点击操作台里的 `复制相对路径` 或 `复制改写提示词`，再粘贴给 Terminal。
 

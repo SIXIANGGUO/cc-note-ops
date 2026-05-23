@@ -8,8 +8,14 @@ fi
 
 ACTION="$1"
 NOTE_REL="$2"
+PROFILE_ID="${3:-balanced}"
 VAULT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 NOTE_ABS="$VAULT_ROOT/$NOTE_REL"
+PROFILE_DIR="$VAULT_ROOT/.cc-command-center/profiles"
+PROFILE_FILE="$PROFILE_DIR/$PROFILE_ID.md"
+ACTION_DIR="$VAULT_ROOT/.cc-command-center/actions"
+ACTION_FILE="$ACTION_DIR/$ACTION.md"
+PROXY_FILE="$VAULT_ROOT/.cc-command-center/proxy.env"
 
 if [ ! -f "$NOTE_ABS" ]; then
   echo "找不到当前笔记: $NOTE_REL" >&2
@@ -18,11 +24,113 @@ fi
 
 BASE="$(basename "$NOTE_REL" .md)"
 STAMP="$(date "+%Y%m%d-%H%M%S")"
+SOURCE_SHORT="${BASE:0:24}"
 OUT_DIR="$VAULT_ROOT/控制中心/运行结果/当前笔记"
 BACKUP_DIR="$VAULT_ROOT/控制中心/备份"
 mkdir -p "$OUT_DIR" "$BACKUP_DIR"
 
 CLAUDE_BIN=""
+load_proxy_env() {
+  if [ ! -f "$PROXY_FILE" ]; then
+    return
+  fi
+
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line#"${line%%[![:space:]]*}"}"
+    line="${line%"${line##*[![:space:]]}"}"
+    case "$line" in
+      ""|\#*) continue ;;
+    esac
+
+    key="${line%%=*}"
+    value="${line#*=}"
+    case "$key" in
+      HTTP_PROXY|HTTPS_PROXY|ALL_PROXY|NO_PROXY|http_proxy|https_proxy|all_proxy|no_proxy)
+        export "$key=$value"
+        ;;
+    esac
+  done < "$PROXY_FILE"
+}
+
+read_profile() {
+  if [ "$PROFILE_ID" = "__none" ]; then
+    return
+  fi
+
+  if [ -f "$PROFILE_FILE" ]; then
+    cat "$PROFILE_FILE"
+    return
+  fi
+
+  if [ -f "$PROFILE_DIR/balanced.md" ]; then
+    cat "$PROFILE_DIR/balanced.md"
+    return
+  fi
+
+  echo "使用清晰、准确、克制的中文表达，保留原文事实，不编造细节。"
+}
+
+read_action_template() {
+  if [ -f "$ACTION_FILE" ]; then
+    cat "$ACTION_FILE"
+    return
+  fi
+
+  echo "请基于当前笔记完成动作：$ACTION。"
+}
+
+profile_label() {
+  case "$PROFILE_ID" in
+    __none) echo "结构化" ;;
+    balanced) echo "均衡清晰" ;;
+    buhuaguo) echo "不滑锅观点流" ;;
+    spoken-camera) echo "上镜口播" ;;
+    pro-tutorial) echo "专业教程" ;;
+    *) echo "$PROFILE_ID" ;;
+  esac
+}
+
+output_path() {
+  local action_label="$1"
+  echo "$OUT_DIR/$action_label-$(profile_label)-$STAMP-$SOURCE_SHORT.md"
+}
+
+build_context() {
+  cat <<EOF
+当前 Obsidian 笔记：$NOTE_REL
+
+请先完整读取原文，再执行任务。
+EOF
+
+  if [ "$PROFILE_ID" != "__none" ]; then
+    cat <<EOF
+当前文风模板：$PROFILE_ID
+
+文风要求：
+$(read_profile)
+
+EOF
+  fi
+
+  cat <<EOF
+长文处理要求：
+1. 如果原文超过 3000 字，先在心里建立全文结构地图，再输出结果。
+2. 输出时必须覆盖开头、中段、结尾的关键信息，避免只处理后半部分。
+3. 如果发现原文信息量太大，请优先保留核心论点、关键步骤、案例和限制条件。
+4. 不要编造原文没有的事实、数据、工具能力和用户案例。
+
+EOF
+}
+
+build_prompt() {
+  cat <<EOF
+$(build_context)
+
+任务模板：
+$(read_action_template)
+EOF
+}
+
 resolve_claude() {
   if [ -n "$CLAUDE_BIN" ]; then
     return 0
@@ -80,6 +188,7 @@ EOF
 run_output_action() {
   local out="$1"
   local prompt="$2"
+  load_proxy_env
 
   if ! resolve_claude; then
     write_missing_claude "$out"
@@ -95,6 +204,7 @@ run_modify_action() {
   local prompt="$1"
   local backup="$BACKUP_DIR/$BASE-$STAMP.md"
   cp "$NOTE_ABS" "$backup"
+  load_proxy_env
 
   if ! resolve_claude; then
     cat >> "$NOTE_ABS" <<EOF
@@ -114,115 +224,26 @@ EOF
 
 case "$ACTION" in
   wechat-article)
-    OUT="$OUT_DIR/$BASE-公众号文章.md"
-    run_output_action "$OUT" "
-请读取这篇 Obsidian 笔记：$NOTE_REL
-把它改写成一篇适合中文公众号发布的文章。
-
-要求：
-1. 不要写成摘要，要写成读者没看过原文也能读懂的文章。
-2. 开头要有冲突和判断，不要寒暄。
-3. 结构清晰，二级标题使用中文。
-4. 保留原文中有价值的观点，但补足背景和操作步骤。
-5. 结尾给出可执行的下一步。
-"
+    OUT="$(output_path "公众号改写")"
+    run_output_action "$OUT" "$(build_prompt)"
     ;;
   xiaohongshu-cards)
-    OUT="$OUT_DIR/$BASE-小红书拆条.md"
-    run_output_action "$OUT" "
-请读取这篇 Obsidian 笔记：$NOTE_REL
-把它拆成 5 条适合小红书、朋友圈或即刻发布的短内容。
-
-每条包含：
-1. 标题
-2. 正文
-3. 配图方向：说明这张图要表达什么信息，不要只写抽象风格
-4. 生图提示词：写成可直接复制给 Gemini、ChatGPT、即梦、豆包等生图模型的信息图提示词
-5. 画面文案：列出图片上建议出现的标题、关键短句和数据标签
-6. 适合的话题标签
-7. 这条适合哪个平台
-
-生图提示词要求：
-1. 默认生成中文信息图，不要生成摄影感封面。
-2. 明确画幅，优先使用 3:4 竖版，小红书友好。
-3. 明确视觉结构，例如标题区、三点列表、流程图、对比表、结论区。
-4. 明确文字必须使用简体中文，排版清晰，避免错别字。
-5. 不要要求模型复刻真实品牌 Logo、真实 UI 或名人肖像。
-6. 如果原文没有数据，不要编造百分比和具体数字。
-
-输出格式：
-## 01. 标题
-
-### 正文
-
-### 配图方向
-
-### 生图提示词
-\`\`\`text
-这里放可复制的完整提示词
-\`\`\`
-
-### 画面文案
-
-### 话题标签
-
-### 适合平台
-"
+    OUT="$(output_path "小红书拆条")"
+    run_output_action "$OUT" "$(build_prompt)"
     ;;
   topic-bank)
-    OUT="$OUT_DIR/$BASE-选题池.md"
-    run_output_action "$OUT" "
-请读取这篇 Obsidian 笔记：$NOTE_REL
-从中提炼可发布选题。
-
-输出：
-1. 10 个公众号标题
-2. 5 个视频号/B站标题
-3. 5 个小红书标题
-4. 每个选题的核心冲突
-5. 推荐优先级和原因
-"
+    OUT="$(output_path "提炼选题")"
+    run_output_action "$OUT" "$(build_prompt)"
     ;;
   summary-map)
-    OUT="$OUT_DIR/$BASE-摘要路标.md"
-    run_output_action "$OUT" "
-请读取这篇 Obsidian 笔记：$NOTE_REL
-生成一份 Obsidian 路标页。
-
-输出：
-1. 300 字以内摘要
-2. 关键词
-3. 建议标签
-4. 建议双链
-5. 可复用到哪些内容场景
-6. 下一步动作
-"
+    OUT="$(output_path "摘要路标")"
+    run_output_action "$OUT" "$(build_prompt)"
     ;;
   polish-in-place)
-    run_modify_action "
-请直接修改这篇 Obsidian 笔记：$NOTE_REL
-目标是润色原文，而不是另写一篇。
-
-要求：
-1. 保留原有事实和核心观点。
-2. 改善中文表达、段落节奏和标题层级。
-3. 不要删除重要信息。
-4. 不要把笔记改成广告文。
-5. 修改完成后只简要说明做了什么。
-"
+    run_modify_action "$(build_prompt)"
     ;;
   obsidian-format)
-    run_modify_action "
-请直接修改这篇 Obsidian 笔记：$NOTE_REL
-目标是让它更像一篇可长期复用的 Obsidian 笔记。
-
-要求：
-1. 如果没有 YAML frontmatter，请补上 title、tags、created、status 字段。
-2. 在正文前补一段 150 字以内摘要。
-3. 补充 3-8 个合适的中文标签。
-4. 在适合的位置加入少量 Obsidian 双链，使用 [[关键词]] 格式。
-5. 不要编造原文没有的事实。
-"
+    run_modify_action "$(build_prompt)"
     ;;
   *)
     echo "未知动作: $ACTION" >&2

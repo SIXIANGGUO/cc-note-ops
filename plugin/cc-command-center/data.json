@@ -5,7 +5,8 @@
       "label": "公众号改写",
       "icon": "newspaper",
       "kind": "output",
-      "description": "把当前笔记改写成一篇完整公众号文章。",
+      "description": "任务：生成公众号长文；文风由上方模板决定。",
+      "usesProfile": true,
       "script": ".cc-command-center/scripts/note-action.sh"
     },
     {
@@ -13,7 +14,8 @@
       "label": "小红书拆条",
       "icon": "image",
       "kind": "output",
-      "description": "拆出 5 条短内容，并附可复制的信息图生图提示词。",
+      "description": "任务：拆 5 条短内容；附信息图生图提示词。",
+      "usesProfile": true,
       "script": ".cc-command-center/scripts/note-action.sh"
     },
     {
@@ -21,7 +23,8 @@
       "label": "提炼选题",
       "icon": "lightbulb",
       "kind": "output",
-      "description": "提炼选题、标题和可发布角度。",
+      "description": "任务：提炼选题、标题和可发布角度。",
+      "usesProfile": false,
       "script": ".cc-command-center/scripts/note-action.sh"
     },
     {
@@ -29,7 +32,8 @@
       "label": "摘要路标",
       "icon": "map",
       "kind": "output",
-      "description": "生成摘要、关键词、双链建议和后续动作。",
+      "description": "任务：生成摘要、关键词、双链建议和后续动作。",
+      "usesProfile": false,
       "script": ".cc-command-center/scripts/note-action.sh"
     },
     {
@@ -37,7 +41,8 @@
       "label": "备份后润色原文",
       "icon": "wand-sparkles",
       "kind": "modify",
-      "description": "先备份当前笔记，再让 Claude Code 直接润色原文件。",
+      "description": "任务：先备份，再按当前文风润色原文件。",
+      "usesProfile": true,
       "script": ".cc-command-center/scripts/note-action.sh"
     },
     {
@@ -45,7 +50,8 @@
       "label": "补标签双链",
       "icon": "tags",
       "kind": "modify",
-      "description": "先备份当前笔记，再补 Obsidian 标签、摘要和双链。",
+      "description": "任务：先备份，再补标签、摘要和双链。",
+      "usesProfile": false,
       "script": ".cc-command-center/scripts/note-action.sh"
     }
   ],
@@ -53,5 +59,47 @@
     "安装 Obsidian Terminal 插件后，把终端固定到底部。",
     "在终端里进入 vault 根目录，然后运行 claude。",
     "本插件负责一键动作；Terminal 负责连续对话和人工接管。"
+  ],
+  "selectedThemeId": "auto",
+  "themes": [
+    {
+      "id": "auto",
+      "label": "跟随 Obsidian"
+    },
+    {
+      "id": "dark",
+      "label": "暗色橙"
+    },
+    {
+      "id": "light",
+      "label": "亮色白"
+    },
+    {
+      "id": "mint",
+      "label": "青绿"
+    }
+  ],
+  "selectedProfileId": "balanced",
+  "profiles": [
+    {
+      "id": "balanced",
+      "label": "均衡清晰",
+      "description": "适合多数笔记，保留信息密度，表达更清楚。"
+    },
+    {
+      "id": "buhuaguo",
+      "label": "不滑锅观点流",
+      "description": "开头有判断，适合公众号和深度内容。"
+    },
+    {
+      "id": "spoken-camera",
+      "label": "上镜口播",
+      "description": "短句、口语、节奏强，适合录视频。"
+    },
+    {
+      "id": "pro-tutorial",
+      "label": "专业教程",
+      "description": "步骤清楚，适合工具教程和操作指南。"
+    }
   ]
 }

@@ -10,6 +10,7 @@ CC Note Ops 不是一个只好看的仪表盘。它会识别你当前打开的 M
 - 跟随预览：操作台里的内容预览会跟随源笔记滚动位置变化。
 - 一键输出：公众号改写、小红书拆条、选题池、摘要路标。
 - 一键修改：润色原文、补标签和双链，修改前自动备份。
+- 文风模板：表达型按钮会读取当前选择的模板，支持沉淀自己的账号文风。
 - Claude Code 集成：通过本机 `claude -p` 后台执行任务。
 - Terminal 配合：保留 Obsidian Terminal 插件里的连续 Claude Code 会话。
 - 本土化内容流：默认面向公众号、小红书、朋友圈、即刻等中文内容场景。
@@ -22,12 +23,16 @@ CC Note Ops 不是一个只好看的仪表盘。它会识别你当前打开的 M
 
 ## 预览
 
-当前版本主打可用性，界面采用暗色操作台风格：
+当前版本主打可用性，既支持暗色操作台，也能跟随 Obsidian 亮色主题：
+
+![Obsidian 亮色主题下的工作台](docs/assets/screenshots/obsidian-workbench-light.png)
+
+![Terminal 插件配合说明](docs/assets/screenshots/terminal-bridge-light.png)
 
 - 顶部显示当前连接状态。
 - 中部显示源笔记信息和跟随滚动的内容预览。
 - 下方提供一键操作卡片。
-- 额外提供“给左侧 Claude”复制入口，方便手动接管。
+- 额外提供“给 Claude”复制入口，方便在任意 Terminal 面板里手动接管。
 
 ## 准备工作
 
@@ -124,6 +129,52 @@ bash scripts/install.sh "/path/to/your/ObsidianVault"
 
 你可以把提示词直接发给 Gemini、ChatGPT、即梦、豆包等生图模型。
 
+### 文风模板
+
+操作台内置 4 套文风模板：
+
+- 均衡清晰
+- 不滑锅观点流
+- 上镜口播
+- 专业教程
+
+模板文件在：
+
+```text
+.cc-command-center/profiles/
+```
+
+你可以直接编辑这些 Markdown 文件，保存自己的公众号文风、小红书文风或口播风格。
+
+文风只作用于表达型任务：
+
+| 会读取文风 | 不读取文风 |
+|------------|------------|
+| 公众号改写、小红书拆条、备份后润色原文 | 提炼选题、摘要路标、补标签双链 |
+
+结构化任务不会跟文风联动，因为它们更像整理、归档和知识库维护动作。
+
+### 代理环境
+
+Obsidian 是 GUI 应用，它启动后台命令时不一定继承你系统终端里的代理环境。
+
+如果你需要让按钮后台调用 Claude Code 时显式使用代理，可以创建：
+
+```text
+.cc-command-center/proxy.env
+```
+
+示例：
+
+```bash
+HTTP_PROXY=http://127.0.0.1:7890
+HTTPS_PROXY=http://127.0.0.1:7890
+ALL_PROXY=socks5://127.0.0.1:7890
+NO_PROXY=localhost,127.0.0.1
+```
+
+这个文件只负责把标准 proxy 环境变量传给后台 `claude` 命令。它不会保证账号安全，也不会替你绕过任何服务条款。请按你自己的网络环境和服务规则使用。
+
 ## 和 Terminal 插件的关系
 
 按钮任务会在后台独立调用 Claude Code：
@@ -140,7 +191,7 @@ Terminal 插件更适合连续对话。建议在 Terminal 里进入 vault 根目
 claude
 ```
 
-如果你想让左侧 Claude Code 手动处理某篇笔记，可以在操作台点击：
+如果你想让 Terminal 里的 Claude Code 手动处理某篇笔记，可以在操作台点击：
 
 - 复制相对路径
 - 复制完整路径
@@ -156,6 +207,12 @@ claude
 plugin/cc-command-center/data.json
 ```
 
+每个按钮的提示词模板在：
+
+```text
+vault/.cc-command-center/actions/
+```
+
 每个按钮会调用隐藏脚本：
 
 ```text
@@ -166,10 +223,11 @@ vault/.cc-command-center/scripts/note-action.sh
 
 ```text
 .obsidian/plugins/cc-command-center/data.json
+.cc-command-center/actions/
 .cc-command-center/scripts/note-action.sh
 ```
 
-你可以修改脚本里的 prompt，把它改成自己的内容工作流。
+多数情况下，只需要改 `.cc-command-center/actions/` 里的 Markdown 模板，不需要改脚本。
 
 ## 卸载
 
@@ -201,6 +259,7 @@ bash scripts/uninstall.sh "/path/to/your/ObsidianVault" --remove-content
 - 修改类任务会先备份原文。
 - 不读取网络凭据。
 - 不上传你的笔记到项目作者服务器。
+- 可选代理只读取 `.cc-command-center/proxy.env` 里的标准 proxy 变量，不会执行任意 shell 代码。
 
 但 Claude Code 本身会根据你的 Claude Code 配置工作。请确认你理解 Claude Code 的运行方式后再使用。
 
@@ -221,6 +280,9 @@ bash scripts/uninstall.sh "/path/to/your/ObsidianVault" --remove-content
 │   └── uninstall.sh
 └── vault/
     ├── .cc-command-center/
+    │   ├── actions/
+    │   ├── profiles/
+    │   ├── proxy.env.example
     │   └── scripts/
     │       └── note-action.sh
     └── 控制中心/
