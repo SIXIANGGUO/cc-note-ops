@@ -196,7 +196,7 @@ run_output_action() {
     return
   fi
 
-  (cd "$VAULT_ROOT" && "$CLAUDE_BIN" -p "$prompt") > "$out"
+  (cd "$VAULT_ROOT" && "$CLAUDE_BIN" -p "$prompt" < /dev/null) > "$out"
   echo "OUTPUT:${out#$VAULT_ROOT/}"
 }
 
@@ -218,7 +218,7 @@ EOF
     return
   fi
 
-  (cd "$VAULT_ROOT" && "$CLAUDE_BIN" -p "$prompt")
+  (cd "$VAULT_ROOT" && "$CLAUDE_BIN" -p "$prompt" < /dev/null)
   echo "OUTPUT:$NOTE_REL"
 }
 

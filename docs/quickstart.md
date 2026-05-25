@@ -78,6 +78,8 @@ claude
 - 话题标签
 - 适合平台
 
+点击按钮后，工作台会显示 `运行状态`。本地 Ollama 慢模型可能需要十几分钟，请等状态变成完成或失败。
+
 ## 6. 常见问题
 
 ### 提示 Claude Code CLI 未找到
@@ -122,6 +124,22 @@ NO_PROXY=localhost,127.0.0.1
 ```
 
 这只负责给后台 `claude` 命令注入标准 proxy 环境变量，不承诺账号安全，也不替代你对服务规则的判断。
+
+### 本地 Ollama 很慢，按钮像没反应
+
+按钮任务会等待 Claude Code 返回结果。当前默认最长等待 45 分钟，比早期版本更适合本地模型。
+
+如果你的模型仍然经常超时，可以编辑：
+
+```text
+.obsidian/plugins/cc-command-center/data.json
+```
+
+调大：
+
+```json
+"actionTimeoutMinutes": 60
+```
 
 ### 点击输出后操作台变成结果页怎么办
 

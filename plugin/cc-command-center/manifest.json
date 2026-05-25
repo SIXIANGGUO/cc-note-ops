@@ -1,7 +1,7 @@
 {
   "id": "cc-command-center",
   "name": "CC Command Center",
-  "version": "0.5.18",
+  "version": "0.5.19",
   "minAppVersion": "1.5.0",
   "description": "A localized Obsidian note operations panel for Claude Code.",
   "author": "不滑锅",

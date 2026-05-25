@@ -66,6 +66,7 @@ const DEFAULT_SETTINGS = {
     "在终端里进入 vault 根目录，然后运行 claude。",
     "本插件负责一键动作；Terminal 负责连续对话和人工接管。"
   ],
+  actionTimeoutMinutes: 45,
   selectedThemeId: "auto",
   themes: [
     {
@@ -119,6 +120,8 @@ class CommandCenterView extends ItemView {
     this.previewPre = null;
     this.previewMeta = null;
     this.scrollUnsubscribers = [];
+    this.statusTimer = null;
+    this.statusElapsedEl = null;
   }
 
   getViewType() {
@@ -145,6 +148,7 @@ class CommandCenterView extends ItemView {
   }
 
   async onClose() {
+    this.stopStatusTimer();
     this.clearSourceScrollListeners();
   }
 
@@ -157,9 +161,10 @@ class CommandCenterView extends ItemView {
     this.renderTopbar(container, note);
     this.renderPreferencePanel(container);
     this.renderNotePanel(container, note);
+    this.renderRunStatus(container);
+    this.renderActions(container, note);
     this.renderTerminalBridge(container, note);
     this.renderProxyPanel(container);
-    this.renderActions(container, note);
     this.renderTerminalPanel(container);
     this.renderResultPanel(container);
   }
@@ -281,11 +286,12 @@ class CommandCenterView extends ItemView {
 
     const deck = panel.createDiv("cc-action-grid");
     for (const action of this.plugin.settings.actions) {
+      const isRunning = this.plugin.runState.status === "running" && this.plugin.runState.actionId === action.id;
       const button = deck.createEl("button", {
-        cls: `cc-action-card ${action.kind === "modify" ? "is-modify" : ""}`,
+        cls: `cc-action-card ${action.kind === "modify" ? "is-modify" : ""} ${isRunning ? "is-running" : ""}`,
         attr: { type: "button" }
       });
-      button.disabled = !note;
+      button.disabled = !note || this.plugin.runState.status === "running";
       const top = button.createDiv("cc-action-card__top");
       const icon = top.createDiv("cc-action-card__icon");
       this.setIcon(icon, action.icon || "sparkles");
@@ -296,8 +302,45 @@ class CommandCenterView extends ItemView {
         text: action.usesProfile === false ? "结构化任务" : `文风：${profile.label}`
       });
       const copy = button.createDiv("cc-action-card__copy");
-      copy.createDiv({ cls: "cc-action-card__desc", text: action.description });
+      copy.createDiv({ cls: "cc-action-card__desc", text: isRunning ? "正在调用 Claude Code，请不要重复点击。" : action.description });
       button.addEventListener("click", () => this.runAction(action, note));
+    }
+  }
+
+  renderRunStatus(container) {
+    const state = this.plugin.runState;
+    if (state.status === "idle") {
+      return;
+    }
+
+    const panel = container.createDiv(`cc-panel cc-run-status is-${state.status}`);
+    const head = panel.createDiv("cc-panel__head");
+    head.createDiv({ cls: "cc-panel__label", text: "运行状态" });
+    head.createDiv({
+      cls: "cc-panel__hint",
+      text: state.status === "running" ? `最长等待 ${this.plugin.getActionTimeoutMinutes()} 分钟` : "最近一次任务"
+    });
+
+    const body = panel.createDiv("cc-run-status__body");
+    const icon = body.createDiv("cc-run-status__icon");
+    this.setIcon(icon, state.status === "success" ? "check-circle-2" : state.status === "error" ? "circle-alert" : "loader-2");
+
+    const copy = body.createDiv("cc-run-status__copy");
+    copy.createDiv({
+      cls: "cc-run-status__title",
+      text: state.status === "running" ? `${state.actionLabel} 正在运行` : state.status === "success" ? `${state.actionLabel} 已完成` : `${state.actionLabel} 失败`
+    });
+    copy.createDiv({ cls: "cc-run-status__text", text: state.message });
+
+    const meta = panel.createDiv("cc-run-status__meta");
+    if (state.startedAt) {
+      this.statusElapsedEl = meta.createSpan({ text: `已耗时 ${this.formatElapsed(Date.now() - state.startedAt)}` });
+      if (state.status === "running") {
+        this.startStatusTimer();
+      }
+    }
+    if (state.outputPath) {
+      meta.createSpan({ text: `输出：${state.outputPath}` });
     }
   }
 
@@ -435,17 +478,81 @@ ${profileText}
       return;
     }
 
+    if (this.plugin.runState.status === "running") {
+      new Notice("已有任务正在运行，请等它完成");
+      return;
+    }
+
+    this.plugin.setRunState({
+      status: "running",
+      actionId: action.id,
+      actionLabel: action.label,
+      notePath: note.path,
+      startedAt: Date.now(),
+      message: "Claude Code 已启动。本地模型可能比较慢，页面会保持等待。",
+      outputPath: ""
+    });
+    await this.render();
     new Notice(`${action.label} 正在运行...`);
     try {
       this.plugin.setSourceNotePath(note.path);
       const profileId = action.usesProfile === false ? "__none" : this.plugin.settings.selectedProfileId;
       const result = await this.plugin.runNoteAction(action, note.path, profileId);
       const outputPath = this.parseOutputPath(result.stdout) || note.path;
+      this.plugin.setRunState({
+        status: "success",
+        actionId: action.id,
+        actionLabel: action.label,
+        notePath: note.path,
+        startedAt: this.plugin.runState.startedAt,
+        message: "任务完成，已打开输出或回到源笔记。",
+        outputPath
+      });
+      this.stopStatusTimer();
       new Notice(`${action.label} 已完成`);
       await this.openFile(outputPath);
+      await this.render();
     } catch (error) {
+      this.plugin.setRunState({
+        status: "error",
+        actionId: action.id,
+        actionLabel: action.label,
+        notePath: note.path,
+        startedAt: this.plugin.runState.startedAt,
+        message: this.cleanErrorMessage(error.message || String(error)),
+        outputPath: ""
+      });
+      this.stopStatusTimer();
       new Notice(`${action.label} 失败：${error.message || String(error)}`);
+      await this.render();
     }
+  }
+
+  cleanErrorMessage(message) {
+    return String(message || "未知错误").replace(/\s+/g, " ").trim().slice(0, 260);
+  }
+
+  startStatusTimer() {
+    this.stopStatusTimer();
+    this.statusTimer = window.setInterval(() => {
+      if (this.statusElapsedEl && this.plugin.runState.startedAt) {
+        this.statusElapsedEl.setText(`已耗时 ${this.formatElapsed(Date.now() - this.plugin.runState.startedAt)}`);
+      }
+    }, 1000);
+  }
+
+  stopStatusTimer() {
+    if (this.statusTimer) {
+      window.clearInterval(this.statusTimer);
+      this.statusTimer = null;
+    }
+  }
+
+  formatElapsed(ms) {
+    const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${String(seconds).padStart(2, "0")}`;
   }
 
   parseOutputPath(stdout) {
@@ -603,6 +710,9 @@ module.exports = class CommandCenterPlugin extends Plugin {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, loaded || {});
     this.settings.actions = Array.isArray(this.settings.actions) ? this.settings.actions : DEFAULT_SETTINGS.actions;
     this.settings.terminalTips = Array.isArray(this.settings.terminalTips) ? this.settings.terminalTips : DEFAULT_SETTINGS.terminalTips;
+    this.settings.actionTimeoutMinutes = Number.isFinite(Number(this.settings.actionTimeoutMinutes))
+      ? Number(this.settings.actionTimeoutMinutes)
+      : DEFAULT_SETTINGS.actionTimeoutMinutes;
     this.settings.themes = Array.isArray(this.settings.themes) ? this.settings.themes : DEFAULT_SETTINGS.themes;
     if (!this.getThemeById(this.settings.selectedThemeId)) {
       this.settings.selectedThemeId = DEFAULT_SETTINGS.selectedThemeId;
@@ -611,6 +721,7 @@ module.exports = class CommandCenterPlugin extends Plugin {
     if (!this.getProfileById(this.settings.selectedProfileId)) {
       this.settings.selectedProfileId = DEFAULT_SETTINGS.selectedProfileId;
     }
+    this.runState = { status: "idle" };
   }
 
   trackLastMarkdownFile() {
@@ -643,16 +754,31 @@ module.exports = class CommandCenterPlugin extends Plugin {
   runNoteAction(action, notePath, profileId) {
     const vaultRoot = this.getVaultRoot();
     const scriptPath = path.join(vaultRoot, action.script);
+    const timeout = this.getActionTimeoutMinutes() * 60 * 1000;
 
     return new Promise((resolve, reject) => {
-      execFile("bash", [scriptPath, action.id, notePath, profileId], { cwd: vaultRoot, timeout: 10 * 60 * 1000 }, (error, stdout, stderr) => {
+      const child = execFile("bash", [scriptPath, action.id, notePath, profileId], { cwd: vaultRoot, timeout }, (error, stdout, stderr) => {
         if (error) {
-          reject(new Error(stderr || error.message));
+          const message = error.killed && error.signal === "SIGTERM"
+            ? `任务超过 ${this.getActionTimeoutMinutes()} 分钟仍未完成，已停止。可以改用更快模型、缩短原文，或在插件 data.json 里调大 actionTimeoutMinutes。`
+            : (stderr || error.message);
+          reject(new Error(message));
           return;
         }
         resolve({ stdout, stderr });
       });
+      if (child.stdin) {
+        child.stdin.end();
+      }
     });
+  }
+
+  getActionTimeoutMinutes() {
+    return Math.max(1, Number(this.settings.actionTimeoutMinutes || DEFAULT_SETTINGS.actionTimeoutMinutes));
+  }
+
+  setRunState(nextState) {
+    this.runState = Object.assign({}, nextState);
   }
 
   getAbsoluteNotePath(notePath) {
