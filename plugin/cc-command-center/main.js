@@ -122,6 +122,7 @@ class CommandCenterView extends ItemView {
     this.scrollUnsubscribers = [];
     this.statusTimer = null;
     this.statusElapsedEl = null;
+    this.renderToken = 0;
   }
 
   getViewType() {
@@ -138,7 +139,12 @@ class CommandCenterView extends ItemView {
 
   async onOpen() {
     await this.render();
-    this.registerEvent(this.app.workspace.on("active-leaf-change", () => this.render()));
+    this.registerEvent(this.app.workspace.on("active-leaf-change", () => {
+      const activeFile = this.app.workspace.getActiveFile();
+      if (this.plugin.isSourceNote(activeFile)) {
+        this.render();
+      }
+    }));
     this.registerEvent(this.app.workspace.on("layout-change", () => this.bindSourceScroll()));
     this.registerEvent(this.app.vault.on("modify", (file) => {
       if (this.currentFile && file.path === this.currentFile.path) {
@@ -153,11 +159,17 @@ class CommandCenterView extends ItemView {
   }
 
   async render() {
-    const container = this.containerEl.children[1];
+    const token = ++this.renderToken;
+    const note = await this.getCurrentNote();
+    if (token !== this.renderToken) {
+      return;
+    }
+
+    const container = this.getContentContainer();
+    this.stopStatusTimer();
     container.empty();
     this.applyThemeClass(container);
 
-    const note = await this.getCurrentNote();
     this.renderTopbar(container, note);
     this.renderPreferencePanel(container);
     this.renderNotePanel(container, note);
@@ -167,6 +179,10 @@ class CommandCenterView extends ItemView {
     this.renderProxyPanel(container);
     this.renderTerminalPanel(container);
     this.renderResultPanel(container);
+  }
+
+  getContentContainer() {
+    return this.contentEl || this.containerEl.children[1];
   }
 
   applyThemeClass(container) {
