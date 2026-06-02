@@ -27,7 +27,7 @@ bash scripts/install.sh "$HOME/Obsidian"
 
 1. 安装插件到 `.obsidian/plugins/cc-command-center/`。
 2. 复制 `控制中心/`，作为用户可见入口。
-3. 复制 `.cc-command-center/`，作为隐藏运行目录。
+3. 复制 `.cc-command-center/`，作为隐藏运行目录和默认 RSS 源池。
 4. 保留你已有的同名笔记文件，避免覆盖旧内容。
 
 ## 3. 启用插件
@@ -79,6 +79,14 @@ claude
 - 适合平台
 
 点击按钮后，工作台会显示 `运行状态`。本地 Ollama 慢模型可能需要十几分钟，请等状态变成完成或失败。
+
+工作台底部还会自动生成 RSS 日报。首次打开时如果显示“正在生成日报”，稍等后点击 `刷新信息源`，确认出现：
+
+```text
+控制中心/资料入口/RSS日报/YYYY-MM-DD-daily-brief.md
+```
+
+日报里的 `X 创作候选` 会直接包含可发布推文和配图提示词。
 
 ## 6. 常见问题
 

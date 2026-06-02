@@ -1,0 +1,109 @@
+{
+  "sources": [
+    {
+      "id": "ai-product-updates-search",
+      "label": "AI 产品更新搜索",
+      "category": "ai-product-updates",
+      "url": "https://news.google.com/rss/search?q=(Claude%20OR%20Gemini%20OR%20Codex%20OR%20DeepSeek%20OR%20Qwen%20OR%20Kimi%20OR%20%E8%B1%86%E5%8C%85%20OR%20%E9%80%9A%E4%B9%89%20OR%20%E6%99%BA%E8%B0%B1)%20(%E5%8F%91%E5%B8%83%20OR%20%E6%96%B0%E5%8A%9F%E8%83%BD%20OR%20%E6%9B%B4%E6%96%B0%20OR%20launch%20OR%20release)&hl=zh-CN&gl=CN&ceid=CN:zh-Hans",
+      "enabled": true
+    },
+    {
+      "id": "openai-news",
+      "label": "OpenAI News",
+      "category": "ai-product-updates",
+      "url": "https://openai.com/news/rss.xml",
+      "enabled": true
+    },
+    {
+      "id": "google-blog",
+      "label": "Google Blog",
+      "category": "ai-product-updates",
+      "url": "https://blog.google/rss/",
+      "enabled": true
+    },
+    {
+      "id": "aws-machine-learning",
+      "label": "AWS Machine Learning Blog",
+      "category": "ai-tools-agents-llm",
+      "url": "https://aws.amazon.com/blogs/machine-learning/feed",
+      "enabled": true
+    },
+    {
+      "id": "google-deepmind",
+      "label": "Google DeepMind Blog",
+      "category": "ai-tools-agents-llm",
+      "url": "https://deepmind.com/blog/feed/basic",
+      "enabled": true
+    },
+    {
+      "id": "last-week-in-ai",
+      "label": "Last Week in AI",
+      "category": "ai-tools-agents-llm",
+      "url": "https://lastweekin.ai/feed",
+      "enabled": true
+    },
+    {
+      "id": "36kr-hot",
+      "label": "36氪 - 24小时热榜",
+      "category": "cn-independent-blogs",
+      "url": "https://rss.mifaw.com/articles/5c8bb11a3c41f61efd36683e/5c91d2e23882afa09dff4901",
+      "enabled": true
+    },
+    {
+      "id": "v2ex-programmer",
+      "label": "V2EX - 程序员",
+      "category": "cn-independent-blogs",
+      "url": "http://www.v2ex.com/feed/programmer.xml",
+      "enabled": true
+    },
+    {
+      "id": "sspai",
+      "label": "少数派",
+      "category": "cn-independent-blogs",
+      "url": "http://sspai.me/feed",
+      "enabled": true
+    },
+    {
+      "id": "hellogithub",
+      "label": "HelloGitHub 月刊",
+      "category": "newsletters-curated",
+      "url": "https://hellogithub.com/rss",
+      "enabled": true
+    },
+    {
+      "id": "devnow",
+      "label": "DevNow 开发技术周刊",
+      "category": "newsletters-curated",
+      "url": "https://www.laughingzhu.cn/rss.xml",
+      "enabled": true
+    },
+    {
+      "id": "transparent-daily",
+      "label": "透明日报",
+      "category": "newsletters-curated",
+      "url": "https://daily.xlab.app/atom.xml",
+      "enabled": true
+    },
+    {
+      "id": "haogongju-weekly",
+      "label": "好工具周刊",
+      "category": "newsletters-curated",
+      "url": "https://bestxtools.github.io/atom.xml",
+      "enabled": true
+    },
+    {
+      "id": "yaoxing-gofurther",
+      "label": "遥行 Gofurther 技术博客",
+      "category": "cn-ai-media-kols",
+      "url": "https://charlesliuyx.github.io/atom.xml",
+      "enabled": true
+    },
+    {
+      "id": "xieyi-ai",
+      "label": "謝懿Shine AI博客",
+      "category": "cn-ai-media-kols",
+      "url": "https://xieyi.org/rss.xml",
+      "enabled": true
+    }
+  ]
+}

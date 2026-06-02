@@ -19,7 +19,11 @@ mkdir -p "$PLUGIN_DIR"
 
 cp "$KIT_ROOT/plugin/cc-command-center/manifest.json" "$PLUGIN_DIR/manifest.json"
 cp "$KIT_ROOT/plugin/cc-command-center/main.js" "$PLUGIN_DIR/main.js"
+cp "$KIT_ROOT/plugin/cc-command-center/prompts.js" "$PLUGIN_DIR/prompts.js"
+cp "$KIT_ROOT/plugin/cc-command-center/rss-brief.js" "$PLUGIN_DIR/rss-brief.js"
+cp "$KIT_ROOT/plugin/cc-command-center/settings.js" "$PLUGIN_DIR/settings.js"
 cp "$KIT_ROOT/plugin/cc-command-center/styles.css" "$PLUGIN_DIR/styles.css"
+cp "$KIT_ROOT/plugin/cc-command-center/view-utils.js" "$PLUGIN_DIR/view-utils.js"
 if [ -f "$PLUGIN_DIR/data.json" ]; then
   cp "$PLUGIN_DIR/data.json" "$PLUGIN_DIR/data.backup.$(date +%Y%m%d%H%M%S).json"
 fi
@@ -37,9 +41,33 @@ copy_if_missing() {
   fi
 }
 
+install_rss_sources() {
+  local src="$1"
+  local dst="$2"
+  if [ ! -e "$dst" ]; then
+    mkdir -p "$(dirname "$dst")"
+    cp "$src" "$dst"
+    echo "created $dst"
+    return
+  fi
+  if grep -q "https://example.com/rss.xml" "$dst" || grep -q '"hugging-face-blog"' "$dst" || grep -q '"simon-willison"' "$dst"; then
+    cp "$dst" "$dst.backup.$(date +%Y%m%d%H%M%S)"
+    cp "$src" "$dst"
+    echo "upgraded starter RSS sources $dst"
+    return
+  fi
+  echo "kept existing $dst"
+}
+
 find "$KIT_ROOT/vault" -type f | while read -r src; do
   rel="${src#$KIT_ROOT/vault/}"
-  copy_if_missing "$src" "$VAULT_ROOT/$rel"
+  if [[ "$rel" == .cc-command-center/rss-cache/* ]]; then
+    continue
+  elif [ "$rel" = ".cc-command-center/rss-sources.json" ]; then
+    install_rss_sources "$src" "$VAULT_ROOT/$rel"
+  else
+    copy_if_missing "$src" "$VAULT_ROOT/$rel"
+  fi
 done
 
 chmod +x "$VAULT_ROOT"/.cc-command-center/scripts/*.sh 2>/dev/null || true

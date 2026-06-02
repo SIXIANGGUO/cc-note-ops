@@ -4,6 +4,8 @@
 
 CC Note Ops 不是一个只好看的仪表盘。它会识别你当前打开的 Markdown 笔记，展示源笔记信息，提供一键内容操作，并把结果写回 Obsidian vault。你也可以把源笔记路径或改写提示词复制给 Obsidian 底部的 Claude Code 终端，继续人工接管。
 
+我会在 X 持续分享 CC Note Ops、Claude Code、Obsidian 内容工作流和 AI 创作自动化的实战更新：[@buhuaguo1](https://x.com/buhuaguo1)。
+
 ## 功能
 
 - 源笔记识别：锁定当前 Markdown 笔记，避免生成结果页抢走操作目标。
@@ -12,6 +14,7 @@ CC Note Ops 不是一个只好看的仪表盘。它会识别你当前打开的 M
 - 一键输出：公众号改写、小红书拆条、选题池、摘要路标。
 - 一键修改：润色原文、补标签和双链，修改前自动备份。
 - 文风模板：表达型按钮会读取当前选择的模板，支持沉淀自己的账号文风。
+- RSS 日报：打开工作台时按内置源池生成中文 Markdown AI 早报，展示重点、快讯和 X 创作候选。
 - Claude Code 集成：通过本机 `claude -p` 后台执行任务。
 - Terminal 配合：保留 Obsidian Terminal 插件里的连续 Claude Code 会话。
 - 本土化内容流：默认面向公众号、小红书、朋友圈、即刻等中文内容场景。
@@ -34,10 +37,13 @@ CC Note Ops 不是一个只好看的仪表盘。它会识别你当前打开的 M
 
 ![一键操作和 Claude Code 接管入口](docs/assets/screenshots/workbench-actions-bridge.png)
 
+![RSS 日报和 X 创作候选](docs/assets/screenshots/workbench-rss-daily.png)
+
 - 顶部显示当前连接状态。
 - 中部显示源笔记信息和跟随滚动的内容预览。
 - 下方提供一键操作卡片。
-- 额外提供“给 Claude”复制入口，方便在任意 Terminal 面板里手动接管。
+- 底部提供 RSS 日报入口，方便从中文早报进入选题、链接复制和 X 创作提示词。
+- 额外保留“给 Claude”复制入口，方便在任意 Terminal 面板里手动接管。
 
 ## 准备工作
 
@@ -72,7 +78,11 @@ cd cc-note-ops
 bash scripts/install.sh "/path/to/your/ObsidianVault"
 ```
 
+如果你下载的是 GitHub Release 压缩包，解压后同样进入目录运行上面的安装命令即可。仓库内置插件模块、默认 RSS 源池和 vault 模板，安装脚本会一次性复制到你的 Obsidian vault。
+
 把 `"/path/to/your/ObsidianVault"` 换成你的 Obsidian 笔记库路径。
+
+用户下载或克隆仓库并运行上面这条安装命令，就可以得到和项目维护者本机一致的工作台、默认 RSS 日报源池、Markdown 日报目录和按钮模板。不需要额外配置 RSS 源。
 
 安装脚本会复制：
 
@@ -160,6 +170,87 @@ bash scripts/install.sh "/path/to/your/ObsidianVault"
 | 公众号改写、小红书拆条、备份后润色原文 | 提炼选题、摘要路标、补标签双链 |
 
 结构化任务不会跟文风联动，因为它们更像整理、归档和知识库维护动作。
+
+### RSS 日报
+
+工作台底部会自动生成一份中文 Markdown 日报。安装脚本会把默认源池写入当前 vault：
+
+```text
+.cc-command-center/rss-sources.json
+```
+
+日报输出位置：
+
+```text
+控制中心/资料入口/RSS日报/YYYY-MM-DD-daily-brief.md
+```
+
+默认源池来自当前 RSS 自动化日报的精选分类，不是普通英文 feed 列表：
+
+| 分类 | 示例来源 |
+|------|----------|
+| AI 产品更新 | AI 产品更新搜索、OpenAI News、Google Blog |
+| AI 工具 / Agent / LLM | AWS Machine Learning、Google DeepMind、Last Week in AI |
+| 中文独立博客 / 社区 | 36氪、V2EX 程序员、少数派 |
+| 精选 Newsletter | HelloGitHub、DevNow、透明日报、好工具周刊 |
+| 中文 AI / KOL | 遥行 Gofurther、謝懿Shine AI博客 |
+
+生成出的 Markdown 结构沿用当前自动化日报：
+
+```text
+# AI 早报 · YYYY-MM-DD
+## 今日最重要的 3 件事
+## 快讯
+## 跟踪清单
+## X 创作候选
+```
+
+你也可以继续编辑 `rss-sources.json`，替换或增删自己的信息源。配置格式：
+
+```json
+{
+  "sources": [
+    {
+      "id": "v2ex-programmer",
+      "label": "V2EX - 程序员",
+      "category": "cn-independent-blogs",
+      "url": "http://www.v2ex.com/feed/programmer.xml",
+      "enabled": true
+    }
+  ]
+}
+```
+
+工作台打开时会按配置抓取 RSS 或 Atom，先渲染成 Markdown 日报，再把摘要缓存到：
+
+```text
+.cc-command-center/rss-cache/YYYY-MM-DD-rss-brief.json
+```
+
+默认展示：
+
+| 区域 | 用途 |
+|------|------|
+| 今日最重要 | 快速判断今天最值得追的 3 个素材 |
+| 快讯速览 | 按自动化日报分类浏览产品、工具、社区和海外动态 |
+| X 创作候选 | 直接生成可发布的 X 推文和配图提示词 |
+
+点击“刷新信息源”会立即重新拉取已启用的 RSS 源，并重写当天 Markdown 日报。默认会使用 6 小时缓存，避免每次打开工作台都重复请求。
+
+如果升级前你的 `rss-sources.json` 仍是 `example.com` 占位模板，或上一版英文 starter feed，安装脚本会先备份旧文件，再替换成新的中文日报源池；如果你已经自定义过源，安装脚本会保留你的文件。
+
+如果你已经有自己的外部日报生成器，也可以在插件 `data.json` 的 `rssFeed` 字段里配置兼容模式：
+
+```json
+{
+  "rssFeed": {
+    "externalBriefsDir": "/path/to/briefs",
+    "externalDailyScript": "/path/to/daily_monitor.sh"
+  }
+}
+```
+
+配置后，插件会优先读取 `externalBriefsDir` 里的 `YYYY-MM-DD-daily-brief.md`；点击刷新时会运行 `externalDailyScript`。
 
 ### 代理环境
 
@@ -288,13 +379,19 @@ bash scripts/uninstall.sh "/path/to/your/ObsidianVault" --remove-content
 │   └── cc-command-center/
 │       ├── data.json
 │       ├── main.js
+│       ├── prompts.js
+│       ├── rss-brief.js
+│       ├── settings.js
 │       ├── manifest.json
-│       └── styles.css
+│       ├── styles.css
+│       └── view-utils.js
 ├── scripts/
+│   ├── package.sh
 │   ├── install.sh
 │   └── uninstall.sh
 └── vault/
     ├── .cc-command-center/
+    │   ├── rss-sources.json
     │   ├── actions/
     │   ├── profiles/
     │   ├── proxy.env.example

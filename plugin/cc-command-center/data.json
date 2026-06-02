@@ -55,11 +55,16 @@
       "script": ".cc-command-center/scripts/note-action.sh"
     }
   ],
-  "terminalTips": [
-    "安装 Obsidian Terminal 插件后，把终端固定到底部。",
-    "在终端里进入 vault 根目录，然后运行 claude。",
-    "本插件负责一键动作；Terminal 负责连续对话和人工接管。"
-  ],
+  "rssFeed": {
+    "enabled": true,
+    "refreshOnOpen": true,
+    "cacheHours": 6,
+    "maxImportantItems": 3,
+    "maxQuickItems": 8,
+    "sources": [],
+    "externalBriefsDir": "",
+    "externalDailyScript": ""
+  },
   "actionTimeoutMinutes": 45,
   "selectedThemeId": "auto",
   "themes": [

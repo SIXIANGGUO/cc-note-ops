@@ -1,0 +1,113 @@
+const DEFAULT_SETTINGS = {
+  actions: [
+    {
+      id: "wechat-article",
+      label: "公众号改写",
+      icon: "newspaper",
+      kind: "output",
+      description: "任务：生成公众号长文；文风由上方模板决定。",
+      usesProfile: true,
+      script: ".cc-command-center/scripts/note-action.sh"
+    },
+    {
+      id: "xiaohongshu-cards",
+      label: "小红书拆条",
+      icon: "image",
+      kind: "output",
+      description: "任务：拆 5 条短内容；附信息图生图提示词。",
+      usesProfile: true,
+      script: ".cc-command-center/scripts/note-action.sh"
+    },
+    {
+      id: "topic-bank",
+      label: "提炼选题",
+      icon: "lightbulb",
+      kind: "output",
+      description: "任务：提炼选题、标题和可发布角度。",
+      usesProfile: false,
+      script: ".cc-command-center/scripts/note-action.sh"
+    },
+    {
+      id: "summary-map",
+      label: "摘要路标",
+      icon: "map",
+      kind: "output",
+      description: "任务：生成摘要、关键词、双链建议和后续动作。",
+      usesProfile: false,
+      script: ".cc-command-center/scripts/note-action.sh"
+    },
+    {
+      id: "polish-in-place",
+      label: "备份后润色原文",
+      icon: "wand-sparkles",
+      kind: "modify",
+      description: "任务：先备份，再按当前文风润色原文件。",
+      usesProfile: true,
+      script: ".cc-command-center/scripts/note-action.sh"
+    },
+    {
+      id: "obsidian-format",
+      label: "补标签双链",
+      icon: "tags",
+      kind: "modify",
+      description: "任务：先备份，再补标签、摘要和双链。",
+      usesProfile: false,
+      script: ".cc-command-center/scripts/note-action.sh"
+    }
+  ],
+  rssFeed: {
+    enabled: true,
+    refreshOnOpen: true,
+    cacheHours: 6,
+    maxImportantItems: 3,
+    maxQuickItems: 8,
+    sources: [],
+    externalBriefsDir: "",
+    externalDailyScript: ""
+  },
+  actionTimeoutMinutes: 45,
+  selectedThemeId: "auto",
+  themes: [
+    {
+      id: "auto",
+      label: "跟随 Obsidian"
+    },
+    {
+      id: "dark",
+      label: "暗色橙"
+    },
+    {
+      id: "light",
+      label: "亮色白"
+    },
+    {
+      id: "mint",
+      label: "青绿"
+    }
+  ],
+  selectedProfileId: "balanced",
+  profiles: [
+    {
+      id: "balanced",
+      label: "均衡清晰",
+      description: "适合多数笔记，保留信息密度，表达更清楚。"
+    },
+    {
+      id: "buhuaguo",
+      label: "不滑锅观点流",
+      description: "开头有判断，适合公众号和深度内容。"
+    },
+    {
+      id: "spoken-camera",
+      label: "上镜口播",
+      description: "短句、口语、节奏强，适合录视频。"
+    },
+    {
+      id: "pro-tutorial",
+      label: "专业教程",
+      description: "步骤清楚，适合工具教程和操作指南。"
+    }
+  ]
+};
+
+module.exports = { DEFAULT_SETTINGS };

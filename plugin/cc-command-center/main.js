@@ -1,115 +1,12 @@
-const { ItemView, Notice, Plugin, setIcon } = require("obsidian");
+const { ItemView, Notice, Plugin, openExternal, requestUrl, setIcon } = require("obsidian");
 const { execFile } = require("child_process");
 const path = require("path");
 
 const VIEW_TYPE = "cc-command-center-view";
-
-const DEFAULT_SETTINGS = {
-  actions: [
-    {
-      id: "wechat-article",
-      label: "公众号改写",
-      icon: "newspaper",
-      kind: "output",
-      description: "任务：生成公众号长文；文风由上方模板决定。",
-      usesProfile: true,
-      script: ".cc-command-center/scripts/note-action.sh"
-    },
-    {
-      id: "xiaohongshu-cards",
-      label: "小红书拆条",
-      icon: "image",
-      kind: "output",
-      description: "任务：拆 5 条短内容；附信息图生图提示词。",
-      usesProfile: true,
-      script: ".cc-command-center/scripts/note-action.sh"
-    },
-    {
-      id: "topic-bank",
-      label: "提炼选题",
-      icon: "lightbulb",
-      kind: "output",
-      description: "任务：提炼选题、标题和可发布角度。",
-      usesProfile: false,
-      script: ".cc-command-center/scripts/note-action.sh"
-    },
-    {
-      id: "summary-map",
-      label: "摘要路标",
-      icon: "map",
-      kind: "output",
-      description: "任务：生成摘要、关键词、双链建议和后续动作。",
-      usesProfile: false,
-      script: ".cc-command-center/scripts/note-action.sh"
-    },
-    {
-      id: "polish-in-place",
-      label: "备份后润色原文",
-      icon: "wand-sparkles",
-      kind: "modify",
-      description: "任务：先备份，再按当前文风润色原文件。",
-      usesProfile: true,
-      script: ".cc-command-center/scripts/note-action.sh"
-    },
-    {
-      id: "obsidian-format",
-      label: "补标签双链",
-      icon: "tags",
-      kind: "modify",
-      description: "任务：先备份，再补标签、摘要和双链。",
-      usesProfile: false,
-      script: ".cc-command-center/scripts/note-action.sh"
-    }
-  ],
-  terminalTips: [
-    "安装 Obsidian Terminal 插件后，把终端固定到底部。",
-    "在终端里进入 vault 根目录，然后运行 claude。",
-    "本插件负责一键动作；Terminal 负责连续对话和人工接管。"
-  ],
-  actionTimeoutMinutes: 45,
-  selectedThemeId: "auto",
-  themes: [
-    {
-      id: "auto",
-      label: "跟随 Obsidian"
-    },
-    {
-      id: "dark",
-      label: "暗色橙"
-    },
-    {
-      id: "light",
-      label: "亮色白"
-    },
-    {
-      id: "mint",
-      label: "青绿"
-    }
-  ],
-  selectedProfileId: "balanced",
-  profiles: [
-    {
-      id: "balanced",
-      label: "均衡清晰",
-      description: "适合多数笔记，保留信息密度，表达更清楚。"
-    },
-    {
-      id: "buhuaguo",
-      label: "不滑锅观点流",
-      description: "开头有判断，适合公众号和深度内容。"
-    },
-    {
-      id: "spoken-camera",
-      label: "上镜口播",
-      description: "短句、口语、节奏强，适合录视频。"
-    },
-    {
-      id: "pro-tutorial",
-      label: "专业教程",
-      description: "步骤清楚，适合工具教程和操作指南。"
-    }
-  ]
-};
+let DEFAULT_SETTINGS = null;
+let RssBriefService = null;
+let buildManualPrompt = null, buildRssPrompt = null;
+let cleanErrorMessage = null, formatElapsed = null, parseOutputPath = null;
 
 class CommandCenterView extends ItemView {
   constructor(leaf, plugin) {
@@ -125,17 +22,9 @@ class CommandCenterView extends ItemView {
     this.renderToken = 0;
   }
 
-  getViewType() {
-    return VIEW_TYPE;
-  }
-
-  getDisplayText() {
-    return "当前笔记操作台";
-  }
-
-  getIcon() {
-    return "bot";
-  }
+  getViewType() { return VIEW_TYPE; }
+  getDisplayText() { return "当前笔记操作台"; }
+  getIcon() { return "bot"; }
 
   async onOpen() {
     await this.render();
@@ -153,10 +42,7 @@ class CommandCenterView extends ItemView {
     }));
   }
 
-  async onClose() {
-    this.stopStatusTimer();
-    this.clearSourceScrollListeners();
-  }
+  async onClose() { this.stopStatusTimer(); this.clearSourceScrollListeners(); }
 
   async render() {
     const token = ++this.renderToken;
@@ -165,7 +51,7 @@ class CommandCenterView extends ItemView {
       return;
     }
 
-    const container = this.getContentContainer();
+    const container = this.contentEl || this.containerEl.children[1];
     this.stopStatusTimer();
     container.empty();
     this.applyThemeClass(container);
@@ -175,14 +61,8 @@ class CommandCenterView extends ItemView {
     this.renderNotePanel(container, note);
     this.renderRunStatus(container);
     this.renderActions(container, note);
+    this.renderRssFeed(container, await this.plugin.loadRssBrief());
     this.renderTerminalBridge(container, note);
-    this.renderProxyPanel(container);
-    this.renderTerminalPanel(container);
-    this.renderResultPanel(container);
-  }
-
-  getContentContainer() {
-    return this.contentEl || this.containerEl.children[1];
   }
 
   applyThemeClass(container) {
@@ -267,7 +147,9 @@ class CommandCenterView extends ItemView {
       option.selected = profile.id === this.plugin.settings.selectedProfileId;
     }
     const current = body.createDiv("cc-profile-current");
-    this.renderProfileSummary(current, this.plugin.getSelectedProfile());
+    const selectedProfile = this.plugin.getSelectedProfile();
+    current.createDiv({ cls: "cc-profile-current__title", text: selectedProfile.label });
+    current.createDiv({ cls: "cc-profile-current__desc", text: selectedProfile.description });
 
     const chips = panel.createDiv("cc-template-chips");
     chips.createSpan({ text: "文风只作用于表达型任务" });
@@ -350,7 +232,7 @@ class CommandCenterView extends ItemView {
 
     const meta = panel.createDiv("cc-run-status__meta");
     if (state.startedAt) {
-      this.statusElapsedEl = meta.createSpan({ text: `已耗时 ${this.formatElapsed(Date.now() - state.startedAt)}` });
+      this.statusElapsedEl = meta.createSpan({ text: `已耗时 ${formatElapsed(Date.now() - state.startedAt)}` });
       if (state.status === "running") {
         this.startStatusTimer();
       }
@@ -369,7 +251,107 @@ class CommandCenterView extends ItemView {
     const grid = panel.createDiv("cc-copy-grid");
     this.createCopyCard(grid, "复制相对路径", "file-input", "最适合 Claude Code 在 vault 根目录下使用。", note, () => note.path);
     this.createCopyCard(grid, "复制完整路径", "copy", "适合跨目录定位或排查路径问题。", note, () => this.plugin.getAbsoluteNotePath(note.path));
-    this.createCopyCard(grid, "复制模板改写提示词", "message-square-text", "带上当前文风模板，交给 Terminal 里的 Claude 手动修改。", note, () => this.buildManualPrompt(note));
+    this.createCopyCard(grid, "复制模板改写提示词", "message-square-text", "带上当前文风模板，交给 Terminal 里的 Claude 手动修改。", note, () => {
+      const profile = this.plugin.getSelectedProfile();
+      return buildManualPrompt(note, profile, this.plugin.readProfileText(profile.id));
+    });
+  }
+
+  renderRssFeed(container, brief) {
+    const panel = container.createDiv("cc-panel cc-rss-feed");
+    const head = panel.createDiv("cc-panel__head");
+    head.createDiv({ cls: "cc-panel__label", text: "RSS 信息源" });
+    head.createDiv({ cls: "cc-panel__hint", text: brief.ok ? `${brief.dateLabel} / ${brief.updatedAt}` : brief.hint });
+
+    if (!brief.ok) {
+      const empty = panel.createDiv("cc-rss-empty");
+      this.setIcon(empty.createDiv("cc-rss-empty__icon"), "rss");
+      empty.createDiv({ cls: "cc-rss-empty__title", text: "还没有读到 RSS 信息源" });
+      empty.createDiv({ cls: "cc-rss-empty__text", text: brief.message });
+      this.renderRssToolbar(empty, brief);
+      return;
+    }
+
+    const toolbar = panel.createDiv("cc-rss-toolbar");
+    toolbar.createDiv({ cls: "cc-rss-title", text: brief.title });
+    this.renderRssToolbar(toolbar, brief);
+
+    const grid = panel.createDiv("cc-rss-layout");
+    const lead = grid.createDiv("cc-rss-section cc-rss-lead");
+    lead.createDiv({ cls: "cc-rss-section__title", text: "今日最重要" });
+    for (const item of brief.importantItems) {
+      this.renderRssStory(lead, item, true);
+    }
+
+    const quick = grid.createDiv("cc-rss-section");
+    quick.createDiv({ cls: "cc-rss-section__title", text: "快讯速览" });
+    for (const item of brief.quickItems) {
+      this.renderRssStory(quick, item, false);
+    }
+
+    const candidate = panel.createDiv("cc-rss-candidate");
+    const candidateHead = candidate.createDiv("cc-rss-candidate__head");
+    this.setIcon(candidateHead.createDiv("cc-rss-candidate__icon"), "sparkles");
+    candidateHead.createDiv({ cls: "cc-rss-candidate__title", text: "X 创作候选" });
+    if (brief.xCandidate) {
+      candidate.createDiv({ cls: "cc-rss-candidate__name", text: brief.xCandidate.title || "未命名候选" });
+      candidate.createDiv({ cls: "cc-rss-candidate__reason", text: brief.xCandidate.reason || "日报已给出候选，可继续扩写成 X 推文或公众号短文。" });
+      const actions = candidate.createDiv("cc-rss-actions");
+      this.createTextButton(actions, "复制原文链接", async () => {
+        await navigator.clipboard.writeText(brief.xCandidate.url || "");
+        new Notice("原文链接已复制");
+      }, !brief.xCandidate.url);
+      this.createTextButton(actions, "复制推文+配图", async () => {
+        await navigator.clipboard.writeText(brief.xCandidate.tweet ? `${brief.xCandidate.tweet}\n\n配图提示词：\n${brief.xCandidate.imagePrompt || ""}` : buildRssPrompt(brief));
+        new Notice("推文和配图提示词已复制");
+      });
+    } else {
+      candidate.createDiv({ cls: "cc-rss-candidate__reason", text: "今天的日报暂时没有提炼出 X 创作候选。" });
+    }
+  }
+
+  renderRssToolbar(parent, brief) {
+    const actions = parent.createDiv("cc-rss-actions");
+    this.createTextButton(actions, "复制日报路径", async () => {
+      await navigator.clipboard.writeText(brief.filePath || this.plugin.getRssSourcesPath());
+      new Notice("RSS 日报路径已复制");
+    });
+    this.createTextButton(actions, "刷新信息源", async () => {
+      new Notice("开始刷新 RSS 信息源...");
+      try {
+        await this.plugin.refreshRssBrief();
+        new Notice("RSS 信息源已刷新");
+        await this.render();
+      } catch (error) {
+        new Notice(`RSS 信息源刷新失败：${cleanErrorMessage(error.message || String(error))}`);
+      }
+    }, !this.plugin.canRefreshRss());
+  }
+
+  renderRssStory(parent, item, isLead) {
+    const story = parent.createDiv(isLead ? "cc-rss-story is-lead" : "cc-rss-story");
+    story.createDiv({ cls: "cc-rss-story__category", text: item.category || "RSS" });
+    const title = story.createDiv({ cls: "cc-rss-story__title", text: item.title });
+    if (item.url) {
+      title.addEventListener("click", () => this.openExternalUrl(item.url));
+      title.addClass("is-link");
+    }
+    story.createDiv({ cls: "cc-rss-story__summary", text: item.summary || "继续观察其可落地影响。" });
+  }
+
+  openExternalUrl(url) {
+    if (typeof openExternal === "function") {
+      openExternal(url);
+      return;
+    }
+    window.open(url);
+  }
+
+  createTextButton(parent, label, onClick, disabled) {
+    const button = parent.createEl("button", { cls: "cc-text-button", attr: { type: "button" }, text: label });
+    button.disabled = Boolean(disabled);
+    button.addEventListener("click", onClick);
+    return button;
   }
 
   createCopyCard(parent, label, iconName, description, note, getText) {
@@ -390,101 +372,11 @@ class CommandCenterView extends ItemView {
     });
   }
 
-  buildManualPrompt(note) {
-    const profile = this.plugin.getSelectedProfile();
-    const profileText = this.plugin.readProfileText(profile.id);
-    return `请处理这篇 Obsidian 笔记：${note.path}
-
-当前文风模板：${profile.label}
-
-文风模板内容：
-${profileText}
-
-请先完整读取原文，再给我一个修改方案。不要立刻改文件。
-
-如果原文超过 3000 字，请先建立全文结构地图，确保开头、中段、结尾的关键信息都被纳入判断。
-
-请输出：
-1. 这篇笔记当前最值得优化的问题
-2. 3 个可选修改方向
-3. 你推荐的方向和原因
-4. 如果我确认，再按上面的文风模板继续修改原文件`;
-  }
-
-  renderProfileSummary(parent, profile) {
-    parent.empty();
-    parent.createDiv({ cls: "cc-profile-current__title", text: profile.label });
-    parent.createDiv({ cls: "cc-profile-current__desc", text: profile.description });
-  }
-
   createPathChip(parent, label, getText) {
     const button = parent.createEl("button", { attr: { type: "button" }, text: label });
     button.addEventListener("click", async () => {
       await navigator.clipboard.writeText(getText());
       new Notice(`${label}已复制`);
-    });
-  }
-
-  renderProxyPanel(container) {
-    const panel = container.createDiv("cc-panel cc-proxy-panel");
-    const head = panel.createDiv("cc-panel__head");
-    head.createDiv({ cls: "cc-panel__label", text: "网络代理" });
-    head.createDiv({ cls: "cc-panel__hint", text: this.plugin.getProxyStatusLabel() });
-
-    panel.createDiv({
-      cls: "cc-proxy-note",
-      text: "如果按钮连不上 Claude，或你希望后台 Claude Code 明确走本机代理，再启用这里。7890 和 7897 是常见本机代理端口；它只影响本插件按钮，不修改系统代理。"
-    });
-
-    const actions = panel.createDiv("cc-proxy-actions");
-    this.createProxyButton(actions, "启用 7890", () => this.plugin.enableProxy("7890"));
-    this.createProxyButton(actions, "启用 7897", () => this.plugin.enableProxy("7897"));
-    this.createProxyButton(actions, "关闭代理", () => this.plugin.disableProxy(), true);
-    this.createProxyButton(actions, "复制配置路径", async () => {
-      await navigator.clipboard.writeText(this.plugin.getProxyEnvPath());
-    });
-  }
-
-  createProxyButton(parent, label, onClick, isDanger) {
-    const button = parent.createEl("button", {
-      cls: `cc-proxy-button ${isDanger ? "is-danger" : ""}`,
-      attr: { type: "button" },
-      text: label
-    });
-    button.addEventListener("click", async () => {
-      await onClick();
-      new Notice(`${label} 已执行`);
-      await this.render();
-    });
-  }
-
-  renderTerminalPanel(container) {
-    const panel = container.createDiv("cc-panel cc-terminal-help");
-    const head = panel.createDiv("cc-panel__head");
-    head.createDiv({ cls: "cc-panel__label", text: "Terminal 插件怎么配合" });
-    head.createDiv({ cls: "cc-panel__hint", text: "人工接管入口" });
-
-    panel.createDiv({
-      cls: "cc-terminal-note",
-      text: "一键操作会在后台启动独立的 Claude Code 进程，Terminal 不会滚动或接管这个任务。需要连续追问时，再去 Terminal 里手动和 Claude Code 对话。"
-    });
-
-    const grid = panel.createDiv("cc-terminal-grid");
-    for (const tip of this.plugin.settings.terminalTips || []) {
-      const item = grid.createDiv("cc-terminal-tip");
-      this.setIcon(item.createDiv("cc-terminal-tip__icon"), "terminal");
-      item.createDiv({ cls: "cc-terminal-tip__text", text: tip });
-    }
-  }
-
-  renderResultPanel(container) {
-    const panel = container.createDiv("cc-panel cc-result-panel");
-    const head = panel.createDiv("cc-panel__head");
-    head.createDiv({ cls: "cc-panel__label", text: "输出位置" });
-    head.createDiv({ cls: "cc-panel__hint", text: "控制中心/运行结果/当前笔记" });
-    panel.createDiv({
-      cls: "cc-result-panel__text",
-      text: "非破坏性任务会生成新文件。直接修改任务会先把原文复制到「控制中心/备份/」，再调用 Claude Code 改当前笔记。"
     });
   }
 
@@ -514,7 +406,7 @@ ${profileText}
       this.plugin.setSourceNotePath(note.path);
       const profileId = action.usesProfile === false ? "__none" : this.plugin.settings.selectedProfileId;
       const result = await this.plugin.runNoteAction(action, note.path, profileId);
-      const outputPath = this.parseOutputPath(result.stdout) || note.path;
+      const outputPath = parseOutputPath(result.stdout) || note.path;
       this.plugin.setRunState({
         status: "success",
         actionId: action.id,
@@ -535,7 +427,7 @@ ${profileText}
         actionLabel: action.label,
         notePath: note.path,
         startedAt: this.plugin.runState.startedAt,
-        message: this.cleanErrorMessage(error.message || String(error)),
+        message: cleanErrorMessage(error.message || String(error)),
         outputPath: ""
       });
       this.stopStatusTimer();
@@ -544,15 +436,11 @@ ${profileText}
     }
   }
 
-  cleanErrorMessage(message) {
-    return String(message || "未知错误").replace(/\s+/g, " ").trim().slice(0, 260);
-  }
-
   startStatusTimer() {
     this.stopStatusTimer();
     this.statusTimer = window.setInterval(() => {
       if (this.statusElapsedEl && this.plugin.runState.startedAt) {
-        this.statusElapsedEl.setText(`已耗时 ${this.formatElapsed(Date.now() - this.plugin.runState.startedAt)}`);
+        this.statusElapsedEl.setText(`已耗时 ${formatElapsed(Date.now() - this.plugin.runState.startedAt)}`);
       }
     }, 1000);
   }
@@ -562,18 +450,6 @@ ${profileText}
       window.clearInterval(this.statusTimer);
       this.statusTimer = null;
     }
-  }
-
-  formatElapsed(ms) {
-    const totalSeconds = Math.max(0, Math.floor(ms / 1000));
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    return `${minutes}:${String(seconds).padStart(2, "0")}`;
-  }
-
-  parseOutputPath(stdout) {
-    const match = String(stdout || "").match(/^OUTPUT:(.+)$/m);
-    return match ? match[1].trim() : null;
   }
 
   createIconButton(parent, iconName, label, onClick) {
@@ -706,6 +582,7 @@ ${profileText}
 
 module.exports = class CommandCenterPlugin extends Plugin {
   async onload() {
+    this.loadLocalModules();
     await this.loadSettings();
     this.trackLastMarkdownFile();
     this.registerView(VIEW_TYPE, (leaf) => new CommandCenterView(leaf, this));
@@ -725,7 +602,7 @@ module.exports = class CommandCenterPlugin extends Plugin {
     const loaded = await this.loadData();
     this.settings = Object.assign({}, DEFAULT_SETTINGS, loaded || {});
     this.settings.actions = Array.isArray(this.settings.actions) ? this.settings.actions : DEFAULT_SETTINGS.actions;
-    this.settings.terminalTips = Array.isArray(this.settings.terminalTips) ? this.settings.terminalTips : DEFAULT_SETTINGS.terminalTips;
+    this.settings.rssFeed = Object.assign({}, DEFAULT_SETTINGS.rssFeed, this.settings.rssFeed || {});
     this.settings.actionTimeoutMinutes = Number.isFinite(Number(this.settings.actionTimeoutMinutes))
       ? Number(this.settings.actionTimeoutMinutes)
       : DEFAULT_SETTINGS.actionTimeoutMinutes;
@@ -738,6 +615,15 @@ module.exports = class CommandCenterPlugin extends Plugin {
       this.settings.selectedProfileId = DEFAULT_SETTINGS.selectedProfileId;
     }
     this.runState = { status: "idle" };
+  }
+
+  loadLocalModules() {
+    const pluginDir = path.join(this.getVaultRoot(), this.app.vault.configDir || ".obsidian", "plugins", this.manifest.id);
+    const localRequire = (fileName) => require(path.join(pluginDir, fileName));
+    ({ DEFAULT_SETTINGS } = localRequire("settings.js"));
+    ({ RssBriefService } = localRequire("rss-brief.js"));
+    ({ buildManualPrompt, buildRssPrompt } = localRequire("prompts.js"));
+    ({ cleanErrorMessage, formatElapsed, parseOutputPath } = localRequire("view-utils.js"));
   }
 
   trackLastMarkdownFile() {
@@ -789,6 +675,26 @@ module.exports = class CommandCenterPlugin extends Plugin {
     });
   }
 
+  async loadRssBrief() {
+    return this.getRssBriefService().load();
+  }
+
+  getRssSourcesPath() {
+    return this.getRssBriefService().getSourcesPath();
+  }
+
+  canRefreshRss() {
+    return this.getRssBriefService().canRefresh();
+  }
+
+  refreshRssBrief() {
+    return this.getRssBriefService().refresh();
+  }
+
+  getRssBriefService() {
+    return new RssBriefService(this.settings.rssFeed, DEFAULT_SETTINGS.rssFeed, { vaultRoot: this.getVaultRoot(), requestUrl });
+  }
+
   getActionTimeoutMinutes() {
     return Math.max(1, Number(this.settings.actionTimeoutMinutes || DEFAULT_SETTINGS.actionTimeoutMinutes));
   }
@@ -827,37 +733,6 @@ module.exports = class CommandCenterPlugin extends Plugin {
   async setSelectedThemeId(themeId) {
     this.settings.selectedThemeId = themeId;
     await this.saveData(this.settings);
-  }
-
-  async enableProxy(port) {
-    const fs = require("fs");
-    const proxyPath = this.getProxyEnvPath();
-    const proxyUrl = `http://127.0.0.1:${port}`;
-    fs.mkdirSync(path.dirname(proxyPath), { recursive: true });
-    fs.writeFileSync(proxyPath, [
-      "# CC Note Ops proxy env",
-      "# 只影响本插件后台调用 claude 的环境变量。",
-      `HTTP_PROXY=${proxyUrl}`,
-      `HTTPS_PROXY=${proxyUrl}`,
-      `ALL_PROXY=socks5://127.0.0.1:${port}`,
-      "NO_PROXY=localhost,127.0.0.1",
-      ""
-    ].join("\n"));
-  }
-
-  async disableProxy() {
-    const fs = require("fs");
-    const proxyPath = this.getProxyEnvPath();
-    fs.mkdirSync(path.dirname(proxyPath), { recursive: true });
-    fs.writeFileSync(proxyPath, [
-      "# CC Note Ops proxy env",
-      "# 当前已关闭。取消下面注释并修改端口即可手动启用。",
-      "# HTTP_PROXY=http://127.0.0.1:7890",
-      "# HTTPS_PROXY=http://127.0.0.1:7890",
-      "# ALL_PROXY=socks5://127.0.0.1:7890",
-      "# NO_PROXY=localhost,127.0.0.1",
-      ""
-    ].join("\n"));
   }
 
   getSelectedProfile() {
@@ -920,4 +795,5 @@ module.exports = class CommandCenterPlugin extends Plugin {
     }
     return path.dirname(this.app.vault.configDir || ".");
   }
+
 };
